@@ -70,7 +70,3 @@ This Jupyter Notebook is a utility script used to define and visualize the opera
 - `drone.jpg`: Image file used for the drone marker on the map.
 - `requirements.txt`: List of Python dependencies.
 
-
-## 📄 License
-
-This project is licensed under the MIT License.
