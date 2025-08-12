@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Drone Delivery Location Selector</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #map { height: 500px; width: 100%; margin-top: 10px; border: 1px solid #ccc; }
+        #suggestions { margin-top: 5px; background: #fff; border: 1px solid #ccc; }
+        .suggestion-item { padding: 5px; cursor: pointer; }
+        .suggestion-item:hover { background-color: #f0f0f0; }
+        #searchBox, #deliveryCountInput { width: 300px; padding: 8px; }
+        button { margin-top: 10px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h2>📦 Select Delivery Locations</h2>
+    <input type="text" id="searchBox" placeholder="Search for a place..." autocomplete="off"><br>
+    <input type="number" id="deliveryCountInput" placeholder="How many deliveries?" min="1">
+    <button onclick="resetSelections()">🔁 Reset</button>
+    <div id="suggestions"></div>
+    <div id="map"></div>
+    <p>📌 Selected: <span id="selectedCoords">None</span></p>
+    <button onclick="submitLocation()">Submit Location</button>
+    <button onclick="planPath()">🛫 Plan Path</button>
+    <p id="distanceDisplay" style="font-weight:bold; font-size:16px; margin-top:10px;"></p>
+    
+    <button id="startBtn" style="margin-top: 10px; padding: 6px 14px;">▶️ Start Simulation</button>
+
+    <h4>📝 Delivery Log</h4>
+    <pre id="logBox" style="background:#eee;padding:10px;border-radius:5px;max-height:200px;overflow-y:auto;"></pre>
+
+    <div id="telemetry" style="margin-top: 15px; font-family: monospace; font-size: 16px;">
+        <h4>📡 Drone Telemetry</h4>
+        Battery: <span id="battery">--</span>%<br>
+        Altitude: <span id="altitude">--</span> m<br>
+        Speed: <span id="speed">--</span> km/h
+    </div>
+
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+    // Drone
+    let droneMarker = null;
+
+    function updateTelemetry() {
+    fetch("http://localhost:5000/telemetry")
+        .then(res => res.json())
+        .then(data => {
+        document.getElementById("battery").innerText = data.battery.toFixed(1);
+        document.getElementById("altitude").innerText = data.altitude.toFixed(1);
+        document.getElementById("speed").innerText = data.speed.toFixed(1);
+
+        if (!droneMarker) {
+            droneMarker = L.marker([data.lat, data.lon], {
+            icon: L.icon({
+                iconUrl: "drone.png",
+                iconSize: [40, 40],
+                iconAnchor: [16, 16]
+            })
+            }).addTo(map);
+        } else {
+            droneMarker.setLatLng([data.lat, data.lon]);
+        }
+        if (data.active === false) {
+            clearInterval(telemetryInterval);
+            clearInterval(logsInterval);
+        }
+        });
+    }
+
+    let telemetryInterval = null;
+    let logsInterval = null;
+
+
+    function updateLogs() {
+        fetch("http://localhost:5000/logs")
+            .then(r => r.json())
+            .then(logs => {
+            document.getElementById("logBox").textContent = logs.join("\n");
+            })
+            .catch(err => console.error("Log fetch error:", err));
+    }
+
+
+
+    // Start Simulation button
+    document.getElementById("startBtn").addEventListener("click", () => {
+        if (!telemetryInterval) {
+            // telemetry every 500ms
+            telemetryInterval = setInterval(updateTelemetry, 500);
+            // logs every 1s, with the full URL
+            logsInterval = setInterval(updateLogs, 1000);
+        }
+    });
+
+
+
+    const map = L.map('map').setView([17.9784, 79.5911], 13);
+    const markerLayer = L.layerGroup().addTo(map);
+    const pathLayer = L.layerGroup().addTo(map);
+
+    let deliveryCount = 0;
+    let currentCount = 0;
+    let selectedLatLngs = [];
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+    }).addTo(map);
+
+    // 🖱️ Click to add a pin
+    map.on('click', function (e) {
+        if (deliveryCount === 0) {
+            const input = document.getElementById("deliveryCountInput").value;
+            if (!input || parseInt(input) <= 0) {
+                alert("Please enter how many deliveries.");
+                return;
+            }
+            deliveryCount = parseInt(input);
+        }
+
+        if (currentCount >= deliveryCount) {
+            alert("🚫 Maximum delivery points reached.");
+            return;
+        }
+
+        const marker = L.marker(e.latlng, { draggable: true }).addTo(markerLayer);
+
+        // ❌ Click to remove pin
+        marker.on("click", () => {
+            markerLayer.removeLayer(marker);
+            selectedLatLngs = selectedLatLngs.filter(p => !(p.lat === e.latlng.lat && p.lng === e.latlng.lng));
+            currentCount--;
+            document.getElementById('selectedCoords').innerText = selectedLatLngs.length
+                ? `Lat: ${selectedLatLngs[selectedLatLngs.length - 1].lat}, Lon: ${selectedLatLngs[selectedLatLngs.length - 1].lng}`
+                : "None";
+        });
+
+        selectedLatLngs.push(e.latlng);
+        currentCount++;
+        document.getElementById('selectedCoords').innerText = `Lat: ${e.latlng.lat}, Lon: ${e.latlng.lng}`;
+    });
+
+    function resetSelections() {
+    // 1. tell the server to stop & reset
+    fetch("http://localhost:5000/reset", {method: "POST"});
+
+    // 2. clear front-end layers
+    markerLayer.clearLayers();
+    pathLayer.clearLayers();
+
+    // 3. stop intervals if they exist
+    if (telemetryInterval) clearInterval(telemetryInterval);
+    if (logsInterval)      clearInterval(logsInterval);
+    telemetryInterval = logsInterval = null;
+
+    // 4. zero counters & UI
+    deliveryCount = currentCount = 0;
+    selectedLatLngs = [];
+    document.getElementById("deliveryCountInput").value = "";
+    document.getElementById("selectedCoords").innerText = "None";
+    document.getElementById("distanceDisplay").innerHTML = "";
+    document.getElementById("logBox").textContent = "";
+    document.getElementById("battery").innerText   = "--";
+    document.getElementById("altitude").innerText  = "--";
+    document.getElementById("speed").innerText     = "--";
+
+    // 5. remove drone marker if it exists
+    if (droneMarker) {
+        map.removeLayer(droneMarker);
+        droneMarker = null;
+    }
+}
+
+    const searchBox = document.getElementById("searchBox");
+    const suggestionBox = document.getElementById("suggestions");
+
+    // 🔍 Autocomplete suggestions
+    searchBox.addEventListener("input", async () => {
+        const query = searchBox.value.trim();
+        if (query.length < 2) {
+            suggestionBox.innerHTML = '';
+            return;
+        }
+
+        const res = await fetch(`http://localhost:5000/geocode?q=${query}`);
+        const data = await res.json();
+
+        suggestionBox.innerHTML = '';
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "suggestion-item";
+            div.innerText = item.label;
+            div.onclick = () => {
+                suggestionBox.innerHTML = '';
+                searchBox.value = item.label;
+                map.setView([item.lat, item.lon], 16);
+                const point = { lat: item.lat, lng: item.lon };
+
+                if (currentCount >= deliveryCount) {
+                    alert("🚫 Max delivery points reached.");
+                    return;
+                }
+
+                const marker = L.marker(point, { draggable: true }).addTo(markerLayer);
+                marker.on("click", () => {
+                    markerLayer.removeLayer(marker);
+                    selectedLatLngs = selectedLatLngs.filter(p => !(p.lat === point.lat && p.lng === point.lng));
+                    currentCount--;
+                    document.getElementById('selectedCoords').innerText = selectedLatLngs.length
+                        ? `Lat: ${selectedLatLngs[selectedLatLngs.length - 1].lat}, Lon: ${selectedLatLngs[selectedLatLngs.length - 1].lng}`
+                        : "None";
+                });
+
+                selectedLatLngs.push(point);
+                currentCount++;
+                document.getElementById('selectedCoords').innerText = `Lat: ${point.lat}, Lon: ${point.lng}`;
+            };
+            suggestionBox.appendChild(div);
+        });
+    });
+
+    function submitLocation() {
+        selectedLatLngs.forEach((latlng) => {
+            fetch("http://localhost:5000/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: latlng.lat, lon: latlng.lng, weight: 1.0 })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    console.log("✅ Location submitted.");
+                }
+            });
+        });
+        alert("📍 All locations submitted.");
+    }
+
+    // 🚀 Plan Route (Backend RRT* + battery logic)
+    async function planPath() {
+        if (selectedLatLngs.length === 0) {
+            alert("⚠️ No points to plan.");
+            return;
+        }
+
+        const response = await fetch("http://localhost:5000/plan_path", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ points: selectedLatLngs })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.path) {
+            pathLayer.clearLayers();
+            markerLayer.clearLayers();
+
+            // 🔢 Add delivery pins with numbers
+            result.deliveries.forEach((coord, i) => {
+                const marker = L.marker(coord, {
+                    icon: L.divIcon({
+                        className: 'delivery-label',
+                        html: `<div style="color:white;background:#2c7;border-radius:50%;width:28px;height:28px;text-align:center;line-height:28px;font-weight:bold;">${result.order[i]}</div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    })
+                }).addTo(markerLayer);
+            });
+
+            // 🛩️ Draw flight path
+            const polyline = L.polyline(result.path, { color: 'blue', weight: 4 }).addTo(pathLayer);
+            map.fitBounds(polyline.getBounds());
+
+            // Display distances
+            // let distanceText = `📏 Total Distance: ${result.distance} km<br>`;
+
+            // result.segment_distances.forEach((dist, i) => {
+            //     const lastIndex = result.segment_distances.length - 1;
+
+            //     if (i === 0) {
+            //         distanceText += `🚁 Base to Delivery Point ${i + 1}: ${dist} km<br>`;
+            //     } else if (i < lastIndex) {
+            //         distanceText += `📍 Delivery Point ${i} to Delivery Point ${i + 1}: ${dist} km<br>`;
+            //     } else {
+            //         distanceText += `🏁 Delivery Point ${i} to Base: ${dist} km<br>`;
+            //     }
+            // });
+
+            //document.getElementById("distanceDisplay").innerHTML = distanceText;
+
+        } else {
+            alert(result.message || "❌ Route planning failed.");
+        }
+    }
+    </script>
+
+</body>
+</html>
