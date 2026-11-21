@@ -1,0 +1,51 @@
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/venv/
+venv/
+.venv/
+env/
+
+# Geographic & Map Data Cache
+cache/
+backend/cache/
+*.osm
+*.pbf
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Logs and DB
+*.log
+*.sqlite
+*.db
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local metadata and generated outputs
+._*
+.pytest_cache/
+*.tsbuildinfo
+backend/data/last_plan.json

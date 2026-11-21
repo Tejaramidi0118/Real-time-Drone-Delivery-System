@@ -1,0 +1,7 @@
+{
+  "place": "Warangal, Telangana, India",
+  "buildings_count": 2,
+  "nfz_count": 124,
+  "buildings_file": "/Volumes/Projects/1. Projects/real-world-drone-simulation/backend/data/buildings.geojson",
+  "nfz_file": "/Volumes/Projects/1. Projects/real-world-drone-simulation/backend/data/nfz.geojson"
+}

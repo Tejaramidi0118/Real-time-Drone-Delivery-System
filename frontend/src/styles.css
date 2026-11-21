@@ -1,0 +1,13 @@
+html,body,#root{ height:100%; margin:0; font-family:Inter, system-ui, sans-serif; }
+.app-root { display:flex; height:100vh; }
+.sidebar { width:340px; padding:16px; background:#0b1220; color:#e6eef8; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+.sidebar input { width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); margin-bottom:6px; }
+.sidebar button { width:100%; padding:10px; margin-bottom:8px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer; }
+.map-wrap { flex:1; }
+.leaflet-container { height:100%; width:100% }
+.search-results { max-height:140px; overflow:auto; background:#07121a; margin-top:6px; border-radius:6px; }
+.search-item { padding:8px; border-bottom:1px solid rgba(255,255,255,0.02); cursor:pointer; color:#e6eef8 }
+.search-item:hover { background:rgba(255,255,255,0.02) }
+.marker-row { display:flex; gap:8px; align-items:center; padding:6px; border-radius:6px; margin-bottom:6px; background:rgba(255,255,255,0.01) }
+.intro-root { display:flex; height:100vh; justify-content:center; align-items:center; background:#f7fafc; }
+.intro-box { width:720px; background:white; border-radius:8px; padding:28px; box-shadow:0 10px 30px rgba(2,6,23,0.08) }

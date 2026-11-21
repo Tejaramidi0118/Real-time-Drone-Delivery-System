@@ -1,0 +1,15 @@
+.flight-announcements { position:absolute; top:16px; right:12px; left:56px; z-index:900; pointer-events:none; display:flex; justify-content:flex-end; }
+.flight-notice { display:flex; align-items:center; gap:.6rem; max-width:100%; padding:.75rem 1rem; background:#132435; color:#f4f8ff; border:1px solid #7193ad; border-radius:10px; box-shadow:0 4px 16px #101a2940; font:600 .95rem/1.4 system-ui,sans-serif; }
+.flight-notice.delivery,.flight-notice.complete { background:#103b36; border-color:#50caae; }
+.flight-notice.error { background:#59282b; border-color:#f49b92; }
+.flight-history { margin-bottom:1rem; padding:.8rem; background:#152334; border-radius:8px; font: .9rem/1.5 system-ui,sans-serif; }
+.flight-history h3 { margin:0 0 .4rem; font-size:1rem; }
+.flight-history ol { margin:0; padding:0; list-style:none; max-height:9rem; overflow:auto; }
+.flight-history time { display:inline-block; min-width:3.5rem; color:#b4c8db; font-variant-numeric:tabular-nums; }
+.flight-history .delivery,.flight-history .complete { color:#87e4c4; }
+.flight-history .error { color:#ffada6; }
+
+.order-pin { display:grid; place-items:center; height:24px; min-width:32px; border:2px solid white; border-radius:14px; background:#9d460c; color:white; font:700 13px/1 system-ui,sans-serif; box-shadow:0 1px 5px #132435aa; }
+.order-pin.done { background:#096047; }
+.zone-key { font: .85rem/1.4 system-ui,sans-serif; color:#e6c4c7; }
+.zone-key::before { content:''; display:inline-block; width:.75rem; height:.75rem; margin-right:.4rem; background:#cf243455; border:1px solid #ed6371; }
